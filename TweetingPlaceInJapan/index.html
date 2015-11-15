@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Watch the tweet place in Japan</title>
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script> 
+<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+<script src="http://d3js.org/topojson.v0.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+
+<script type="text/javascript">
+var circleSize = 50;
+var circleDuration = 5000;
+$(function(){
+var windowSize = new Array(2);//現在のwindowサイズの初期値にして開始
+window_load();
+
+function window_load(){//windowサイズを取得
+	windowSize[0]= window.innerWidth;
+	windowSize[1]=window.innerHeight;
+}
+
+//	日本地図
+var topoJsonUrl = "/topo.json";
+
+//	変数設定
+var width = windowSize[0],//ウインドウサイズを使用
+    height = windowSize[1],
+    scale = 1;
+
+// bodyにSVGをつくり、g(地図グループ）を作る
+d3.select("div.map").append("svg")
+	.attr("width", width)
+	.attr("height", height)
+	.append("g").attr("id", "all-g");
+
+//投影法の設定
+var projection = d3.geo.mercator()
+		.center([138, 35])
+		.scale(1200)
+		.translate([width / 2, height / 2]);
+    
+// 地図読み込み
+d3.json(topoJsonUrl, onLoadMap);
+// データ設定
+var color = ["red","blue","yellow","green","orange","gray"];//表示に使う色たち
+var socket = io.connect();//接続開始
+var cNumber = 0;
+
+socket.on('msg', function(data) {
+	drawPoint([[data[0],data[1]]],cNumber);//位置情報だけを抽出
+	$('div.timeStream').prepend('<font color="'+color[cNumber]+'">'+data[4]+'</font><br>');
+	$('div.nameStream').prepend('<font color="'+color[cNumber]+'">'+data[2]+'</font><br>');
+	$('div.textStream').prepend('<font color="'+color[cNumber]+'">'+data[3]+'</font><br>');
+	$('div.geoStream').prepend('<font color="'+color[cNumber]+'">'+data[0]+':'+data[1]+'</font><br>');
+	cNumber++;
+	if(cNumber == 6)cNumber=0;
+});
+  
+function drawPoint(mydata,num){
+
+//既にあるデータを削除する
+/*
+	d3.select("#all-g")
+	.selectAll("circleA")
+	.data(mydata)
+	.exit()
+	.remove("circle");
+*/
+	//	円を描く
+	d3.select("#all-g")
+	.append("g")
+		.attr("id","circle-g")
+		.selectAll("circleAS")
+			.data(mydata)
+			.enter()
+			.append("circle")
+			.attr("fill", color[num])//色をつける
+			.attr("opacity", 1.0)//透過させる
+			.attr("transform", function(d) { 
+				var coord = projection([d[0], d[1]]);
+				return "translate(" + coord.join(",") + ")"; 
+			})//中心地点
+			.attr("r", 1/scale)//サイズ
+			.transition()	//円の最終状態を定義する
+				.duration(circleDuration)//経過時間
+				.attr("opacity",0)//透過
+				.attr("r", circleSize/scale);//サイズ
+}
+
+function onLoadMap (error, jpn) {
+	//地図を描く
+	var path = d3.geo.path().projection(projection);
+	var features = topojson.object(jpn, jpn.objects.japan);
+	d3.select("#all-g")
+        	.append("g").attr("id", "path-g").selectAll("path")
+            	.data(features.geometries)
+            	.enter()
+            	.append("path")
+					.attr("fill", "#f0f0f0")
+					.attr("stroke", "#999")
+					.attr("stroke-width", 0.5/scale)
+					.attr("d", path);
+}
+
+
+
+
+});
+function changeSizeValue(value) {
+	circleSize = value;
+    document.getElementById("sizeVal").innerHTML = value;
+}
+function changeDurationValue(value) {
+	circleDuration = value;
+    document.getElementById("durationVal").innerHTML = value;
+}
+</script>
+<link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<body>
+<div class="wrapper">
+	<img class="img" src="sample.png">
+	<input class="circlesize" type="range" min="10" max="500" step="5" value="50" onchange="changeSizeValue(this.value)">
+	<input class="circleduration" type="range" min="500" max="15000" step="100" value="5000" onchange="changeDurationValue(this.value)">
+	<span id="sizeVal">50</span>
+	<span id="durationVal">5000</span>
+		<span id="size">SIZE</span>
+	<span id="duration">DURATION</span>
+	<div class ="map"></div>
+	<div class ="stream">
+		<div class ="timeStreamT" style="float:left;">Time</div><div class ="nameStreamT" style="float:left;">Name</div><div class ="textStreamT" style="float:left;">Tweet</div><div class ="geoStreamT" style="float:left;">Geo Info</div>
+		<div class ="timeStream" style="float:left;"></div><div class ="nameStream" style="float:left;"></div><div class ="textStream" style="float:left;"></div><div class ="geoStream" style="float:left;"></div>
+	</div>
+</div>
+</body>

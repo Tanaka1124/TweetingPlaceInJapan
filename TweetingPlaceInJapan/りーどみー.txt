@@ -1,0 +1,22 @@
+実行方法
+
+１．Node.jsをインストール
+	https://nodejs.org/
+
+２．socket.ioをインストール
+	端末を開き，このディレクトリ上で
+	>npm install socket.io
+
+３．ntwitterをインストール
+	端末を開き，このディレクトリ上で
+	>npm install ntwitter
+
+４．APIキーを設定
+	getSteram.jsを開き，APIキーを設定
+
+５．プログラムの実行
+	端末上で
+	>node getStream
+
+６．Tweetの観察
+	ブラウザでhttp://localhost:3000/を表示
